@@ -117,7 +117,7 @@ function RecentAnalysesSection() {
       const promises = history.map(async (job) => {
         try {
           const response = await fetch(
-            `http://localhost:5000/api/video/status/${job.jobId}`,
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/video/status/${job.jobId}`,
           );
           const data = await response.json();
 

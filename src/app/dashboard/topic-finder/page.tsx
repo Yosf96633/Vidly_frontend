@@ -113,8 +113,8 @@ export default function ViralGapDetector() {
 
     try {
       const [searchRes, suggestRes] = await Promise.all([
-        fetch(`http://localhost:5000/api/topics/search?query=${encodeURIComponent(query)}`),
-        fetch(`http://localhost:5000/api/topics/suggestions?keyword=${encodeURIComponent(query)}`)
+        fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/topics/search?query=${encodeURIComponent(query)}`),
+        fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/topics/suggestions?keyword=${encodeURIComponent(query)}`)
       ])
       
       const searchData = await searchRes.json()
@@ -141,7 +141,7 @@ export default function ViralGapDetector() {
     setAnalysisData(null) // Reset previous data
 
     try {
-      const response = await fetch('http://localhost:5000/api/topics/analyze', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/topics/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ keyword })
