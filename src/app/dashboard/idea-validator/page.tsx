@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   CheckCircle2,
   XCircle,
@@ -26,9 +26,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Space_Grotesk, Outfit } from "next/font/google";
-import { RateLimitIndicator } from "@/components/RateLimitIndicator";
-import { validateIdea, RateLimitError } from "@/lib/api";
-import { Toast, useToast } from "@/components/RateLimitToast";
+import { RateLimitError } from "@/lib/api";
 
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] });
 const outfit = Outfit({ subsets: ["latin"] });
@@ -393,14 +391,16 @@ export default function VideoIdeaValidatorPage() {
   const [targetAudience, setTargetAudience] = useState("");
   const [goal, setGoal] = useState("");
   const [uiState, setUiState] = useState<UIState>({ type: "idle" });
-
-  const { showError, showWarning, showSuccess, toasts, removeToast } =
-    useToast();
-
+  const [rateLimit, setRateLimit] = useState({
+    remaining: 2,
+    limit: 2,
+    resetIn: null as number | null,
+    isExhausted: false,
+  });
+  const [isCheckingLimit, setIsCheckingLimit] = useState(true);
   // ========================================
   // STREAMING HANDLER
   // ========================================
-
   const handleSubmit = async () => {
     // Validate inputs
     if (!idea.trim() || !targetAudience.trim() || !goal.trim()) {
@@ -409,7 +409,16 @@ export default function VideoIdeaValidatorPage() {
         error: "Please fill in all fields",
         retryable: false,
       });
-      showError("Please fill in all fields");
+      return;
+    }
+    if (rateLimit.isExhausted) {
+      const hours = Math.floor((rateLimit.resetIn || 0) / 3600);
+      const minutes = Math.floor(((rateLimit.resetIn || 0) % 3600) / 60);
+      setUiState({
+        type: "failed",
+        error: `Rate limit reached. Resets in ${hours}h ${minutes}m`,
+        retryable: false,
+      });
       return;
     }
 
@@ -431,18 +440,28 @@ export default function VideoIdeaValidatorPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ idea, targetAudience, goal }),
       });
-
-      // ✅ UPDATED: Handle 429 rate limit response
+      // ✅ Handle 429 rate limit response
       if (response.status === 429) {
         const errorData = await response.json();
+        setUiState({
+          type: "failed",
+          error:
+            errorData.message || "Daily limit reached. Try again tomorrow!",
+          retryable: false,
+        });
+        return;
+      }
 
-        throw new RateLimitError(
-          errorData.message || "Daily limit reached. Try again tomorrow!",
-          parseInt(response.headers.get("Retry-After") || "0", 10),
-          response.headers.get("X-RateLimit-Reset") || new Date().toISOString(),
-          parseInt(response.headers.get("X-RateLimit-Limit") || "2", 10),
-          parseInt(response.headers.get("X-RateLimit-Remaining") || "0", 10),
-        );
+      // ✅ Update rate limit from response headers
+      const remaining = response.headers.get("X-RateLimit-Remaining");
+      const resetIn = response.headers.get("X-RateLimit-Reset");
+      if (remaining !== null) {
+        setRateLimit((prev) => ({
+          ...prev,
+          remaining: parseInt(remaining),
+          resetIn: resetIn ? parseInt(resetIn) : prev.resetIn,
+          isExhausted: parseInt(remaining) === 0,
+        }));
       }
 
       if (!response.ok) {
@@ -554,14 +573,12 @@ export default function VideoIdeaValidatorPage() {
                   type: "completed",
                   result: result,
                 });
-                showSuccess("Idea validation completed successfully!");
               } else {
                 setUiState({
                   type: "failed",
                   error: data.data.error || "Validation failed",
                   retryable: true,
                 });
-                showError(data.data.error || "Validation failed");
               }
             }
           } catch (parseError) {
@@ -579,14 +596,12 @@ export default function VideoIdeaValidatorPage() {
           error: err.message,
           retryable: false,
         });
-        showError(err.message);
       } else {
         setUiState({
           type: "failed",
           error: err.message || "An unexpected error occurred",
           retryable: true,
         });
-        showError(err.message || "An unexpected error occurred");
       }
     }
   };
@@ -652,23 +667,49 @@ export default function VideoIdeaValidatorPage() {
     }
   };
 
+  const formatResetTime = (seconds: number | null): string => {
+    if (!seconds) return "soon";
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    if (minutes > 0) return `${minutes}m`;
+    return `${seconds}s`;
+  };
+
   // ========================================
   // RENDER
   // ========================================
+  useEffect(() => {
+    const checkRateLimit = async () => {
+      try {
+        setIsCheckingLimit(true);
+        const response = await fetch(`${API_URL}/usage/idea-validator`);
+        const data = await response.json();
 
+        if (data.success && data.feature) {
+          setRateLimit({
+            remaining: data.feature.remaining,
+            limit: data.feature.limit,
+            resetIn: data.feature.resetIn,
+            isExhausted: data.feature.isExhausted,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to check rate limit:", error);
+      } finally {
+        setIsCheckingLimit(false);
+      }
+    };
+
+    checkRateLimit();
+
+    // Refresh every 30 seconds
+    const interval = setInterval(checkRateLimit, 30000);
+    return () => clearInterval(interval);
+  }, []);
   return (
     <div className="min-h-screen bg-black p-4 sm:p-8">
       <div className="max-w-6xl mx-auto">
-        {/* ✅  TOAST CONTAINER */}
-        {toasts.map((toast) => (
-          <Toast
-            key={toast.id}
-            message={toast.message}
-            type={toast.type}
-            onClose={() => removeToast(toast.id)}
-          />
-        ))}
-
         {/* Header with artistic elements */}
         <div className=" text-center mb-12 relative">
           <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-8">
@@ -689,14 +730,6 @@ export default function VideoIdeaValidatorPage() {
           </p>
         </div>
 
-        {/* ✅  RATE LIMIT INDICATOR */}
-        {uiState.type === "idle" && (
-          <RateLimitIndicator
-            featureName="idea-validator"
-            displayName="Idea Validation"
-          />
-        )}
-
         {/* Input Section */}
         {uiState.type !== "completed" && (
           <div className="mb-8">
@@ -707,6 +740,42 @@ export default function VideoIdeaValidatorPage() {
                   Video Concept Details
                 </h2>
               </div>
+
+              {/* Rate Limit Warning Banner */}
+              {rateLimit.isExhausted && (
+                <div className="mb-6 p-6 bg-gradient-to-r from-red-500/10 to-red-600/10 border border-red-500/30 rounded-xl">
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-red-500/20 rounded-lg">
+                      <XCircle className="w-6 h-6 text-red-400" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-red-400 mb-2">
+                        Daily Limit Reached
+                      </h3>
+                      <p className="text-red-300 mb-2">
+                        You've used all {rateLimit.limit} validations for today
+                      </p>
+                      <p className="text-sm text-red-400/80">
+                        Reset in:{" "}
+                        <span className="font-semibold">
+                          {formatResetTime(rateLimit.resetIn)}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Usage Counter */}
+              {!rateLimit.isExhausted && (
+                <div className="mb-4 flex items-center justify-center gap-2 text-sm text-gray-400">
+                  <Sparkles className="w-4 h-4 text-[#E55A52]" />
+                  <span>
+                    {rateLimit.remaining}/{rateLimit.limit} validations
+                    remaining today
+                  </span>
+                </div>
+              )}
 
               <div className="space-y-6">
                 <div>
@@ -719,8 +788,12 @@ export default function VideoIdeaValidatorPage() {
                     value={idea}
                     onChange={(e) => setIdea(e.target.value)}
                     placeholder="e.g., How to build a passive income stream with AI"
-                    className="w-full px-5 py-4 bg-[#0f0f0f] border-2 border-neutral-900 rounded-xl focus:border-[#E55A52] focus:ring-2 focus:ring-[#E55A52]/30 outline-none transition-all text-white placeholder-gray-500"
-                    disabled={uiState.type !== "idle"}
+                    className="w-full px-5 py-4 bg-[#0f0f0f] border-2 border-neutral-900 rounded-xl focus:border-[#E55A52] focus:ring-2 focus:ring-[#E55A52]/30 outline-none transition-all text-white placeholder-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={
+                      uiState.type !== "idle" ||
+                      rateLimit.isExhausted ||
+                      isCheckingLimit
+                    }
                   />
                 </div>
 
@@ -734,8 +807,12 @@ export default function VideoIdeaValidatorPage() {
                     value={targetAudience}
                     onChange={(e) => setTargetAudience(e.target.value)}
                     placeholder="e.g., Tech-savvy entrepreneurs aged 25-40"
-                    className="w-full px-5 py-4 bg-[#0f0f0f] border-2 border-neutral-900 rounded-xl focus:border-[#C83E3A] focus:ring-2 focus:ring-[#C83E3A]/30 outline-none transition-all text-white placeholder-gray-500"
-                    disabled={uiState.type !== "idle"}
+                    className="w-full px-5 py-4 bg-[#0f0f0f] border-2 border-neutral-900 rounded-xl focus:border-[#C83E3A] focus:ring-2 focus:ring-[#C83E3A]/30 outline-none transition-all text-white placeholder-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={
+                      uiState.type !== "idle" ||
+                      rateLimit.isExhausted ||
+                      isCheckingLimit
+                    }
                   />
                 </div>
 
@@ -749,25 +826,37 @@ export default function VideoIdeaValidatorPage() {
                     value={goal}
                     onChange={(e) => setGoal(e.target.value)}
                     placeholder="e.g., Reach 100K views in first month"
-                    className="w-full px-5 py-4 bg-[#0f0f0f] border-2 border-neutral-900 rounded-xl focus:border-[#B02E2B] focus:ring-2 focus:ring-[#B02E2B]/30 outline-none transition-all text-white placeholder-gray-500"
-                    disabled={uiState.type !== "idle"}
+                    className="w-full px-5 py-4 bg-[#0f0f0f] border-2 border-neutral-900 rounded-xl focus:border-[#B02E2B] focus:ring-2 focus:ring-[#B02E2B]/30 outline-none transition-all text-white placeholder-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={
+                      uiState.type !== "idle" ||
+                      rateLimit.isExhausted ||
+                      isCheckingLimit
+                    }
                   />
                 </div>
 
                 {uiState.type === "idle" && (
                   <button
                     onClick={handleSubmit}
-                    className={`w-full px-8 py-5 rounded-xl font-bold text-lg flex items-center justify-center gap-3 group transition-all shadow-lg ${"bg-[#B02E2B] hover:opacity-90 text-white hover:shadow-xl hover:shadow-[#E55A52]/20"}`}
+                    disabled={rateLimit.isExhausted || isCheckingLimit}
+                    className={`w-full px-8 py-5 rounded-xl font-bold text-lg flex items-center justify-center gap-3 group transition-all shadow-lg ${
+                      rateLimit.isExhausted || isCheckingLimit
+                        ? "bg-gray-600 cursor-not-allowed opacity-50"
+                        : "bg-[#B02E2B] hover:opacity-90 text-white hover:shadow-xl hover:shadow-[#E55A52]/20"
+                    }`}
                   >
                     <Rocket className="w-5 h-5 group-hover:animate-bounce" />
-                    Validate Idea
+                    {isCheckingLimit
+                      ? "Loading..."
+                      : rateLimit.isExhausted
+                        ? "Limit Reached"
+                        : "Validate Idea"}
                   </button>
                 )}
               </div>
             </div>
           </div>
         )}
-
         {/* Multi-Step Loader for Processing State */}
         {uiState.type === "processing" && (
           <div className="space-y-8">

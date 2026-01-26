@@ -67,15 +67,61 @@ const AuroraBackground = () => {
   );
 };
 
+interface UsageSummary {
+  totalUsed: number;
+  totalRemaining: number;
+  totalAllowed: number;
+  percentageUsed: number;
+}
+
 export function WelcomeHero() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [userName, setUserName] = useState("Creator");
+  const [usageSummary, setUsageSummary] = useState<UsageSummary>({
+    totalUsed: 0,
+    totalRemaining: 6,
+    totalAllowed: 6,
+    percentageUsed: 0,
+  });
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     const savedName = localStorage.getItem("user_name");
     if (savedName) setUserName(savedName);
     return () => clearInterval(timer);
+  }, []);
+
+  // Fetch usage summary from API
+  useEffect(() => {
+    const fetchUsageSummary = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/usage/summary`);
+        
+        if (!response.ok) {
+          throw new Error("Failed to fetch usage summary");
+        }
+
+        const data = await response.json();
+        
+        if (data.success && data.summary) {
+          setUsageSummary(data.summary);
+        }
+      } catch (error) {
+        console.error("Error fetching usage summary:", error);
+        // Keep default values on error
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUsageSummary();
+
+    // Optionally refresh usage data every 30 seconds
+    const interval = setInterval(fetchUsageSummary, 30000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const getGreeting = () => {
@@ -111,8 +157,6 @@ export function WelcomeHero() {
     >
       {/* Aurora Background Animation */}
       <AuroraBackground />
-
-      
 
       {/* Content */}
       <div className="relative z-10 p-8 md:p-12">
@@ -180,7 +224,9 @@ export function WelcomeHero() {
               {
                 icon: Zap,
                 label: "Daily Limit",
-                value: "6 Uses",
+                value: isLoading 
+                  ? "Loading..." 
+                  : `${usageSummary.totalRemaining}/${usageSummary.totalAllowed} Left`,
                 color: "#FF6B6B",
               },
             ].map((stat, idx) => (
@@ -211,8 +257,6 @@ export function WelcomeHero() {
           </motion.div>
         </div>
       </div>
-
-      
     </motion.section>
   );
 }

@@ -14,27 +14,32 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-interface RateLimitInfo {
-  limit: number;
+interface FeatureUsageData {
+  name: string;
+  displayName: string;
+  used: number;
   remaining: number;
-  resetAt: string | null;
-  isLimited: boolean;
+  limit: number;
+  resetIn: number | null;
+  resetInHuman: string;
+  isExhausted: boolean;
 }
 
 interface FeatureUsage {
   name: string;
   displayName: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string; style: any }>;
   color: string;
   gradientFrom: string;
   gradientTo: string;
-  usage: RateLimitInfo;
+  usage: FeatureUsageData | null;
 }
 
 const FEATURE_CONFIGS = [
   {
-    name: "sentiment-analysis",
+    name: "comment-analyzer",
     displayName: "Audience Mind-Reader",
+    apiEndpoint: "/usage/comment-analyzer",
     icon: MessageSquare,
     color: "#EF5350",
     gradientFrom: "#EF5350",
@@ -43,14 +48,16 @@ const FEATURE_CONFIGS = [
   {
     name: "idea-validator",
     displayName: "Idea Validator",
+    apiEndpoint: "/usage/idea-validator",
     icon: CheckCircle,
     color: "#FF6B6B",
     gradientFrom: "#FF6B6B",
     gradientTo: "#EF5350",
   },
   {
-    name: "topic-search",
+    name: "viral-search",
     displayName: "Viral Search",
+    apiEndpoint: "/usage/viral-search",
     icon: TrendingUp,
     color: "#C83E3A",
     gradientFrom: "#C83E3A",
@@ -75,7 +82,7 @@ const itemVariants = {
     y: 0,
     transition: {
       duration: 0.5,
-      ease: [0.23, 1, 0.32, 1],
+      ease: [0.23, 1, 0.32, 1] as const,
     },
   },
 };
@@ -83,34 +90,47 @@ const itemVariants = {
 export function UsageStatistics() {
   const [features, setFeatures] = useState<FeatureUsage[]>([]);
   const [currentTime, setCurrentTime] = useState(Date.now());
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Load usage data from localStorage
+  // Fetch usage data from API
   useEffect(() => {
-    const loadUsageData = () => {
-      const usageData = FEATURE_CONFIGS.map((config) => {
-        const stored = localStorage.getItem(`vidspire_rate_limit_${config.name}`);
-        let usage: RateLimitInfo = {
-          limit: 2,
-          remaining: 2,
-          resetAt: null,
-          isLimited: false,
-        };
+    const loadUsageData = async () => {
+      try {
+        setIsLoading(true);
 
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          // Check if reset time has passed
-          if (parsed.resetAt && new Date(parsed.resetAt) > new Date()) {
-            usage = parsed;
+        const usagePromises = FEATURE_CONFIGS.map(async (config) => {
+          try {
+            const response = await fetch(
+              `${process.env.NEXT_PUBLIC_BACKEND_URL}${config.apiEndpoint}`,
+            );
+
+            if (!response.ok) {
+              throw new Error(`Failed to fetch ${config.name} usage`);
+            }
+
+            const data = await response.json();
+
+            return {
+              ...config,
+              usage: data.success ? data.feature : null,
+            };
+          } catch (error) {
+            console.error(`Error fetching ${config.name} usage:`, error);
+            // Return with null usage on error
+            return {
+              ...config,
+              usage: null,
+            };
           }
-        }
+        });
 
-        return {
-          ...config,
-          usage,
-        };
-      });
-
-      setFeatures(usageData);
+        const usageData = await Promise.all(usagePromises);
+        setFeatures(usageData);
+      } catch (error) {
+        console.error("Error loading usage data:", error);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     loadUsageData();
@@ -118,56 +138,89 @@ export function UsageStatistics() {
     // Update every second for live countdown
     const interval = setInterval(() => {
       setCurrentTime(Date.now());
-      loadUsageData(); // Also reload data to catch any resets
     }, 1000);
 
-    return () => clearInterval(interval);
+    // Refresh usage data every 30 seconds
+    const refreshInterval = setInterval(() => {
+      loadUsageData();
+    }, 30000);
+
+    return () => {
+      clearInterval(interval);
+      clearInterval(refreshInterval);
+    };
   }, []);
 
-  const getTimeUntilReset = (resetAt: string | null): string => {
-    if (!resetAt) return "";
+  const getTimeUntilReset = (resetIn: number | null): string => {
+    if (!resetIn || resetIn <= 0) return "Resetting...";
 
-    const resetTime = new Date(resetAt).getTime();
-    const now = currentTime;
-    const diff = resetTime - now;
-
-    if (diff <= 0) return "Resetting...";
-
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    const hours = Math.floor(resetIn / 3600);
+    const minutes = Math.floor((resetIn % 3600) / 60);
+    const seconds = resetIn % 60;
 
     if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
     if (minutes > 0) return `${minutes}m ${seconds}s`;
     return `${seconds}s`;
   };
 
-  const getPercentageUsed = (usage: RateLimitInfo): number => {
-    const used = usage.limit - usage.remaining;
-    return (used / usage.limit) * 100;
+  const getPercentageUsed = (usage: FeatureUsageData): number => {
+    return (usage.used / usage.limit) * 100;
   };
 
-  const getStatusColor = (usage: RateLimitInfo) => {
-    if (usage.isLimited) return "#EF5350";
+  const getStatusColor = (usage: FeatureUsageData) => {
+    if (usage.isExhausted) return "#EF5350";
     if (usage.remaining === 1) return "#FF6B6B";
     return "#10B981";
   };
 
-  const getStatusText = (usage: RateLimitInfo) => {
-    if (usage.isLimited) return "Limit Reached";
+  const getStatusText = (usage: FeatureUsageData) => {
+    if (usage.isExhausted) return "Limit Reached";
     if (usage.remaining === 1) return "Last Use Available";
     return `${usage.remaining} Uses Left`;
   };
 
   const getTotalUsed = () => {
     return features.reduce((acc, feature) => {
-      return acc + (feature.usage.limit - feature.usage.remaining);
+      return acc + (feature.usage?.used || 0);
     }, 0);
   };
 
   const getTotalAvailable = () => {
-    return features.reduce((acc, feature) => acc + feature.usage.limit, 0);
+    return features.reduce((acc, feature) => {
+      return acc + (feature.usage?.limit || 2);
+    }, 0);
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-neutral-300 flex items-center gap-2">
+              <Zap className="w-4 h-4 text-[#B02E2B]" />
+              Daily Usage Overview
+            </h2>
+            <p className="text-xs text-neutral-500 mt-1">
+              Loading usage data...
+            </p>
+          </div>
+        </div>
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="bg-black border-neutral-800">
+              <CardContent className="p-6">
+                <div className="animate-pulse space-y-4">
+                  <div className="h-10 bg-neutral-800 rounded"></div>
+                  <div className="h-2 bg-neutral-800 rounded"></div>
+                  <div className="h-8 bg-neutral-800 rounded"></div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   if (features.length === 0) return null;
 
@@ -197,9 +250,20 @@ export function UsageStatistics() {
       {/* Usage Cards Grid */}
       <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
         {features.map((feature, index) => {
+          if (!feature.usage) {
+            return (
+              <Card key={feature.name} className="bg-black border-neutral-800">
+                <CardContent className="p-6">
+                  <p className="text-xs text-neutral-500">
+                    Failed to load data
+                  </p>
+                </CardContent>
+              </Card>
+            );
+          }
+
           const Icon = feature.icon;
           const percentageUsed = getPercentageUsed(feature.usage);
-          const usedCount = feature.usage.limit - feature.usage.remaining;
 
           return (
             <motion.div
@@ -228,14 +292,17 @@ export function UsageStatistics() {
                           border: `1px solid ${feature.color}30`,
                         }}
                       >
-                        <Icon className="w-5 h-5" style={{ color: feature.color }} />
+                        <Icon
+                          className="w-5 h-5"
+                          style={{ color: feature.color }}
+                        />
                       </div>
                       <div>
                         <h3 className="text-sm font-bold text-white">
                           {feature.displayName}
                         </h3>
                         <p className="text-xs text-neutral-500 mt-0.5">
-                          {usedCount} / {feature.usage.limit} uses
+                          {feature.usage.used} / {feature.usage.limit} uses
                         </p>
                       </div>
                     </div>
@@ -264,7 +331,7 @@ export function UsageStatistics() {
                   </div>
 
                   {/* Status Footer */}
-                  {feature.usage.isLimited ? (
+                  {feature.usage.isExhausted ? (
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-[#EF5350]">
                         <AlertCircle className="w-4 h-4" />
@@ -272,19 +339,21 @@ export function UsageStatistics() {
                           {getStatusText(feature.usage)}
                         </span>
                       </div>
-                      
+
                       {/* Live Countdown Timer */}
-                      <div className="bg-[#EF5350]/10 border border-[#EF5350]/20 rounded-lg p-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 text-xs text-[#EF5350]">
-                            <Clock className="w-3 h-3" />
-                            <span className="font-medium">Resets in:</span>
+                      {feature.usage.resetIn && (
+                        <div className="bg-[#EF5350]/10 border border-[#EF5350]/20 rounded-lg p-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-xs text-[#EF5350]">
+                              <Clock className="w-3 h-3" />
+                              <span className="font-medium">Resets in:</span>
+                            </div>
+                            <span className="text-sm font-mono font-bold text-[#EF5350]">
+                              {getTimeUntilReset(feature.usage.resetIn)}
+                            </span>
                           </div>
-                          <span className="text-sm font-mono font-bold text-[#EF5350]">
-                            {getTimeUntilReset(feature.usage.resetAt)}
-                          </span>
                         </div>
-                      </div>
+                      )}
                     </div>
                   ) : (
                     <div className="flex items-center justify-between text-xs">
@@ -297,27 +366,28 @@ export function UsageStatistics() {
                           {getStatusText(feature.usage)}
                         </span>
                       </div>
-                      {feature.usage.resetAt && (
+                      {feature.usage.resetIn && (
                         <span className="text-neutral-500 font-mono">
-                          {getTimeUntilReset(feature.usage.resetAt)}
+                          {getTimeUntilReset(feature.usage.resetIn)}
                         </span>
                       )}
                     </div>
                   )}
 
                   {/* Warning for last use */}
-                  {feature.usage.remaining === 1 && !feature.usage.isLimited && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      className="mt-3 pt-3 border-t border-neutral-800"
-                    >
-                      <div className="flex items-start gap-2 text-xs text-[#FF6B6B]">
-                        <span>💡</span>
-                        <p>Last free use today!</p>
-                      </div>
-                    </motion.div>
-                  )}
+                  {feature.usage.remaining === 1 &&
+                    !feature.usage.isExhausted && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        className="mt-3 pt-3 border-t border-neutral-800"
+                      >
+                        <div className="flex items-start gap-2 text-xs text-[#FF6B6B]">
+                          <span>💡</span>
+                          <p>Last free use today!</p>
+                        </div>
+                      </motion.div>
+                    )}
                 </CardContent>
               </Card>
             </motion.div>
@@ -326,7 +396,7 @@ export function UsageStatistics() {
       </div>
 
       {/* Overall Status Banner */}
-      {features.some((f) => f.usage.isLimited) && (
+      {features.some((f) => f.usage?.isExhausted) && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -341,8 +411,9 @@ export function UsageStatistics() {
                 Daily Limit Reached
               </h4>
               <p className="text-xs text-neutral-400">
-                You've reached the daily limit on some features. They'll reset automatically
-                when the countdown completes. Come back tomorrow for more analyses!
+                You've reached the daily limit on some features. They'll reset
+                automatically when the countdown completes. Come back tomorrow
+                for more analyses!
               </p>
             </div>
           </div>

@@ -743,6 +743,13 @@ export default function VideoAnalysisPage() {
   const currentJobIdRef = useRef<string | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pollingAttemptRef = useRef(0);
+  const [rateLimit, setRateLimit] = useState({
+    remaining: 2,
+    limit: 2,
+    resetIn: null as number | null,
+    isExhausted: false,
+  });
+  const [isCheckingLimit, setIsCheckingLimit] = useState(true);
 
   // --- INITIALIZATION ---
   useEffect(() => {
@@ -752,6 +759,36 @@ export default function VideoAnalysisPage() {
       disconnectSocket();
       stopPolling();
     };
+  }, []);
+
+  // Fetch rate limit status on component mount
+  useEffect(() => {
+    const checkRateLimit = async () => {
+      try {
+        setIsCheckingLimit(true);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/usage/comment-analyzer`);
+        const data = await response.json();
+
+        if (data.success && data.feature) {
+          setRateLimit({
+            remaining: data.feature.remaining,
+            limit: data.feature.limit,
+            resetIn: data.feature.resetIn,
+            isExhausted: data.feature.isExhausted,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to check rate limit:", error);
+      } finally {
+        setIsCheckingLimit(false);
+      }
+    };
+
+    checkRateLimit();
+
+    // Refresh every 30 seconds
+    const interval = setInterval(checkRateLimit, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   // Check for jobId in URL params and fetch existing analysis
@@ -961,7 +998,6 @@ export default function VideoAnalysisPage() {
       });
     }
   };
-
   const handleSubmit = async () => {
     if (!videoUrl.trim()) {
       setUiState({
@@ -972,7 +1008,17 @@ export default function VideoAnalysisPage() {
       return;
     }
 
-    // ✅ NEW: Check rate limit
+    // ✅ Check if rate limited
+    if (rateLimit.isExhausted) {
+      const hours = Math.floor((rateLimit.resetIn || 0) / 3600);
+      const minutes = Math.floor(((rateLimit.resetIn || 0) % 3600) / 60);
+      setUiState({
+        type: "failed",
+        error: `Rate limit reached. Resets in ${hours}h ${minutes}m`,
+        retryable: false,
+      });
+      return;
+    }
 
     setUiState({
       type: "processing",
@@ -982,10 +1028,19 @@ export default function VideoAnalysisPage() {
     setPendingJobs([]);
 
     try {
-      // ✅ NEW: Use API wrapper instead of fetch
       const { data, headers } = await analyzeSentiment(videoUrl);
 
-      // ✅ NEW: Update rate limit from headers
+      // ✅ Update rate limit from response headers
+      const remaining = headers.get("x-ratelimit-remaining");
+      const resetIn = headers.get("x-ratelimit-reset");
+      if (remaining !== null) {
+        setRateLimit((prev) => ({
+          ...prev,
+          remaining: parseInt(remaining),
+          resetIn: resetIn ? parseInt(resetIn) : prev.resetIn,
+          isExhausted: parseInt(remaining) === 0,
+        }));
+      }
 
       const { jobId, videoId } = data;
       currentJobIdRef.current = jobId;
@@ -1002,11 +1057,18 @@ export default function VideoAnalysisPage() {
 
       connectToJob(jobId, videoId);
     } catch (err: any) {
-      // ✅ NEW: Handle rate limit errors
-      if (err) {
-      }
       setUiState({ type: "failed", error: err.message, retryable: true });
     }
+  };
+
+  // Add this helper function before the return statement (around line 900)
+  const formatResetTime = (seconds: number | null): string => {
+    if (!seconds) return "soon";
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    if (minutes > 0) return `${minutes}m`;
+    return `${seconds}s`;
   };
 
   const resumeJob = async (job: JobMetadata) => {
@@ -1131,26 +1193,86 @@ export default function VideoAnalysisPage() {
           {/* ✅ UPDATE INPUT SECTION - Add disabled state */}
           {uiState.type === "idle" && (
             <div className="w-full max-w-2xl mx-auto mt-8 text-center">
+              {/* Rate Limit Warning Banner */}
+              {rateLimit.isExhausted && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-4 bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/30 rounded-xl p-4"
+                >
+                  <div className="flex items-center justify-center gap-3">
+                    <ShieldAlert className="w-5 h-5 text-red-500" />
+                    <div className="text-left">
+                      <p className="text-sm font-bold text-red-400">
+                        Daily limit reached ({rateLimit.remaining}/
+                        {rateLimit.limit} uses)
+                      </p>
+                      <p className="text-xs text-neutral-400 mt-1">
+                        Resets in {formatResetTime(rateLimit.resetIn)} • Come
+                        back tomorrow!
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Usage Counter */}
+              {!rateLimit.isExhausted && (
+                <div className="mb-4 flex items-center justify-center gap-2 text-sm text-neutral-500">
+                  <Sparkles className="w-4 h-4 text-[#B02E2B]" />
+                  <span>
+                    {rateLimit.remaining}/{rateLimit.limit} analyses remaining
+                    today
+                  </span>
+                </div>
+              )}
+
               <div className="relative group">
-                <div className="absolute -inset-1 bg-linear-to-r from-[#B02E2B] to-[#902421] rounded-xl blur opacity-25 group-hover:opacity-50 transition duration-200"></div>
+                <div
+                  className={`absolute -inset-1 rounded-xl blur transition duration-200 ${
+                    rateLimit.isExhausted
+                      ? "bg-neutral-600 opacity-20"
+                      : "bg-gradient-to-r from-[#B02E2B] to-[#902421] opacity-25 group-hover:opacity-50"
+                  }`}
+                ></div>
                 <div className="relative flex">
                   <input
                     type="text"
                     value={videoUrl}
                     onChange={(e) => setVideoUrl(e.target.value)}
-                    placeholder="Paste YouTube Video URL..."
+                    disabled={rateLimit.isExhausted || isCheckingLimit}
+                    placeholder={
+                      rateLimit.isExhausted
+                        ? "Daily limit reached - come back tomorrow"
+                        : "Paste YouTube Video URL..."
+                    }
                     className="w-full pl-6 pr-32 py-5 bg-white dark:bg-[#0f0f0f] border border-neutral-200 dark:border-neutral-800 rounded-xl text-neutral-900 dark:text-white focus:ring-1 focus:ring-[#B02E2B] focus:border-[#B02E2B] outline-none transition-all text-lg shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                   <button
                     onClick={handleSubmit}
-                    className={`absolute right-2 top-2 bottom-2 px-8 font-bold rounded-lg transition-all flex items-center gap-2 ${"bg-[#B02E2B] hover:bg-[#902421] text-white"}`}
+                    disabled={rateLimit.isExhausted || isCheckingLimit}
+                    className={`absolute right-2 top-2 bottom-2 px-8 font-bold rounded-lg transition-all flex items-center gap-2 ${
+                      rateLimit.isExhausted || isCheckingLimit
+                        ? "bg-neutral-600 text-neutral-400 cursor-not-allowed"
+                        : "bg-[#B02E2B] hover:bg-[#902421] text-white"
+                    }`}
                   >
-                    Analyze <ArrowRight className="w-5 h-5" />
+                    {isCheckingLimit ? (
+                      <>Loading...</>
+                    ) : rateLimit.isExhausted ? (
+                      <>Limit Reached</>
+                    ) : (
+                      <>
+                        Analyze <ArrowRight className="w-5 h-5" />
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
               <p className="mt-4 text-neutral-500 text-sm">
-                Try: https://www.youtube.com/watch?v=...
+                {rateLimit.isExhausted
+                  ? `Your limit will reset in ${formatResetTime(rateLimit.resetIn)}`
+                  : "Try: https://www.youtube.com/watch?v=..."}
               </p>
             </div>
           )}

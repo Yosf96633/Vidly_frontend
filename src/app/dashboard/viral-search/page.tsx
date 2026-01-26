@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   Filter,
@@ -23,21 +23,21 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { searchTopicsAdvanced, RateLimitError } from "@/lib/api";
 
-// ✅ FIXED: Updated types to match backend response
+// Types
 interface VideoResult {
   id: string;
-  videoUrl: string; // ✅ Added
+  videoUrl: string;
   title: string;
   thumbnail: string;
   channel: string;
-  channelUrl: string; // ✅ Added
+  channelUrl: string;
   views: number;
   subscribers: number;
   outlierScore: number;
   viewToSubRatio: number;
   publishedAt: string;
   durationMins: number;
-  isShort: boolean; // ✅ Added for better filtering display
+  isShort: boolean;
 }
 
 export default function AdvancedViralSearchPage() {
@@ -48,26 +48,85 @@ export default function AdvancedViralSearchPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
-  // ✅ FIXED: Updated filter names to match backend
+  const [rateLimitInfo, setRateLimitInfo] = useState<{
+    isLimited: boolean;
+    message: string;
+    resetTime: string;
+    remaining: number;
+    limit: number;
+  } | null>(null);
+  const [isCheckingLimit, setIsCheckingLimit] = useState(true);
+
+  // Filter states
   const [minViews, setMinViews] = useState([10000]);
   const [outlierThreshold, setOutlierThreshold] = useState([200]);
   const [contentType, setContentType] = useState<"all" | "longForm" | "shorts">(
     "longForm",
-  ); // Changed from "long" to "longForm"
+  );
   const [sortBy, setSortBy] = useState<
     "latest" | "bestMatch" | "mostViews" | "topRated"
-  >("latest"); // Updated sort options
+  >("latest");
 
-  // ✅ FIXED: Updated API call to match backend endpoint
+  // Check rate limit function
+  const checkRateLimit = async () => {
+    try {
+      setIsCheckingLimit(true);
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/usage/viral-search`,
+        {
+          method: "GET",
+        },
+      );
+
+      const data = await response.json();
+
+      if (response.status === 429 || data.feature?.isExhausted) {
+        setRateLimitInfo({
+          isLimited: true,
+          message: data.message || "You've reached your daily search limit",
+          resetTime: data.feature?.resetInHuman || "24 hours",
+          remaining: 0,
+          limit: data.feature?.limit || 2,
+        });
+        return false;
+      }
+
+      if (data.success && data.feature) {
+        setRateLimitInfo({
+          isLimited: false,
+          message: "",
+          resetTime: data.feature.resetInHuman || "",
+          remaining: data.feature.remaining,
+          limit: data.feature.limit,
+        });
+      }
+      return true;
+    } catch (error) {
+      console.error("Rate limit check failed:", error);
+      return true; // Fail open
+    } finally {
+      setIsCheckingLimit(false);
+    }
+  };
+  // Check rate limit on mount
+  useEffect(() => {
+    checkRateLimit();
+  }, []);
+
+  // Handle search
   const handleSearch = async () => {
-    if (!query) return;
+    if (!query.trim()) return;
+
+    // Check rate limit before searching
+    if (rateLimitInfo?.isLimited) {
+      return;
+    }
 
     setLoading(true);
     setHasSearched(true);
     setResults([]);
 
     try {
-      // ✅ NEW: Use API wrapper instead of fetch
       const { data, headers } = await searchTopicsAdvanced(query, {
         contentType: contentType,
         sort: sortBy,
@@ -75,9 +134,35 @@ export default function AdvancedViralSearchPage() {
         minViews: minViews[0],
         maxResults: 20,
       });
+
+      setResults(data as VideoResult[]);
+
+      // Update rate limit info from response headers
+      const remaining = headers.get("x-ratelimit-remaining");
+      const limit = headers.get("x-ratelimit-limit");
+      const resetIn = headers.get("x-ratelimit-reset");
+
+      if (remaining !== null) {
+        setRateLimitInfo({
+          isLimited: parseInt(remaining) === 0,
+          message:
+            parseInt(remaining) === 0
+              ? "You've reached your daily search limit"
+              : "",
+          resetTime: resetIn ? formatResetTime(parseInt(resetIn)) : "24 hours",
+          remaining: parseInt(remaining),
+          limit: limit ? parseInt(limit) : 2,
+        });
+      }
     } catch (error: any) {
-      // ✅ NEW: Handle rate limit errors
-      if (error instanceof RateLimitError) {
+      if (error) {
+        setRateLimitInfo({
+          isLimited: true,
+          message: error.message,
+          resetTime: error.resetInHuman || "24 hours",
+          remaining: 0,
+          limit: error.limit || 2,
+        });
       } else {
         console.error("Search error:", error);
       }
@@ -94,6 +179,15 @@ export default function AdvancedViralSearchPage() {
     }).format(num);
   };
 
+  // Helper to format reset time
+  const formatResetTime = (seconds: number): string => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    if (minutes > 0) return `${minutes}m`;
+    return `${seconds}s`;
+  };
+
   const formatDuration = (mins: number) => {
     if (mins < 1) {
       return `${Math.round(mins * 60)}s`;
@@ -105,7 +199,6 @@ export default function AdvancedViralSearchPage() {
     return `${minutes}m`;
   };
 
-  // ✅ NEW: Handle video card click
   const handleVideoClick = (videoUrl: string) => {
     window.open(videoUrl, "_blank", "noopener,noreferrer");
   };
@@ -114,7 +207,7 @@ export default function AdvancedViralSearchPage() {
     <div className="h-full flex flex-col p-6 max-w-7xl mx-auto space-y-8">
       {/* Header */}
       <div className="flex justify-center items-center flex-col gap-2">
-        <div className="flex  items-center gap-3">
+        <div className="flex items-center gap-3">
           <div className="p-2 bg-[#B02E2B]/10 rounded-lg">
             <TrendingUp className="w-6 h-6 text-[#B02E2B]" />
           </div>
@@ -122,7 +215,7 @@ export default function AdvancedViralSearchPage() {
             Advanced Viral Search
           </h1>
         </div>
-        <p className="text-neutral-400 text-lg max-w-2xl">
+        <p className="text-neutral-400 text-lg max-w-2xl text-center">
           Filter by{" "}
           <span className="text-[#B02E2B] font-bold">
             'Views Per Subscriber'
@@ -130,6 +223,51 @@ export default function AdvancedViralSearchPage() {
           to find small channels pulling massive numbers.
         </p>
       </div>
+
+      {/* Rate Limit Info Banner */}
+      {rateLimitInfo && (
+        <div
+          className={`p-4 rounded-xl border ${
+            rateLimitInfo.isLimited
+              ? "bg-gradient-to-r from-red-500/10 to-red-600/10 border-red-500/30"
+              : "bg-gradient-to-r from-blue-500/10 to-blue-600/10 border-blue-500/30"
+          }`}
+        >
+          <div className="flex items-start gap-4">
+            {rateLimitInfo.isLimited ? (
+              <div className="p-3 bg-red-500/20 rounded-lg">
+                <AlertCircle className="w-6 h-6 text-red-400" />
+              </div>
+            ) : (
+              <div className="p-3 bg-blue-500/20 rounded-lg">
+                <TrendingUp className="w-6 h-6 text-blue-400" />
+              </div>
+            )}
+            <div className="flex-1">
+              <p
+                className={`font-bold text-lg ${
+                  rateLimitInfo.isLimited ? "text-red-400" : "text-blue-400"
+                }`}
+              >
+                {rateLimitInfo.isLimited
+                  ? "Daily Search Limit Reached"
+                  : `${rateLimitInfo.remaining}/${rateLimitInfo.limit} Searches Remaining`}
+              </p>
+              {rateLimitInfo.isLimited && (
+                <>
+                  <p className="text-red-300 mt-1">{rateLimitInfo.message}</p>
+                  <p className="text-sm text-red-400/80 mt-1">
+                    Reset in:{" "}
+                    <span className="font-semibold">
+                      {rateLimitInfo.resetTime}
+                    </span>
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Search & Filter Bar */}
       <div className="flex flex-col gap-4 bg-[#0f0f0f] p-6 rounded-2xl border border-neutral-800 shadow-xl shadow-black/50">
@@ -141,17 +279,35 @@ export default function AdvancedViralSearchPage() {
               className="pl-10 h-12 bg-black border-neutral-800 text-white focus:border-[#B02E2B] focus:ring-[#B02E2B]/20 disabled:opacity-50 disabled:cursor-not-allowed"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              onKeyDown={(e) =>
+                e.key === "Enter" &&
+                !rateLimitInfo?.isLimited &&
+                !isCheckingLimit &&
+                handleSearch()
+              }
+              disabled={rateLimitInfo?.isLimited || isCheckingLimit}
             />
           </div>
           <Button
-            className={`h-12 px-8 font-bold shadow-[0_0_15px_rgba(176,46,43,0.4)] transition-all hover:scale-105 ${"bg-[#B02E2B] hover:bg-[#8a2422] text-white"}`}
+            className={`h-12 px-8 font-bold shadow-[0_0_15px_rgba(176,46,43,0.4)] transition-all ${
+              rateLimitInfo?.isLimited || isCheckingLimit
+                ? "bg-gray-600 cursor-not-allowed opacity-50"
+                : "bg-[#B02E2B] hover:bg-[#8a2422] hover:scale-105 text-white"
+            }`}
             onClick={handleSearch}
-            disabled={loading}
+            disabled={loading || rateLimitInfo?.isLimited || isCheckingLimit}
           >
             {loading ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin mr-2" /> Hunting...
+              </>
+            ) : isCheckingLimit ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading...
+              </>
+            ) : rateLimitInfo?.isLimited ? (
+              <>
+                <AlertCircle className="w-5 h-5 mr-2" /> Limit Reached
               </>
             ) : (
               <>
@@ -179,7 +335,7 @@ export default function AdvancedViralSearchPage() {
               className="overflow-hidden"
             >
               <div className="pt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 border-t border-neutral-800 mt-2">
-                {/* ✅ FIXED: 1. Sort Order - Updated values */}
+                {/* Sort Order */}
                 <div className="space-y-4">
                   <Label className="text-white mb-2 block font-medium">
                     Sort Strategy
@@ -220,7 +376,7 @@ export default function AdvancedViralSearchPage() {
                   </div>
                 </div>
 
-                {/* ✅ FIXED: 2. Content Type - Updated values */}
+                {/* Content Type */}
                 <div className="space-y-4">
                   <Label className="text-white mb-2 block font-medium">
                     Content Type
@@ -243,7 +399,7 @@ export default function AdvancedViralSearchPage() {
                   </div>
                 </div>
 
-                {/* 3. Outlier Score */}
+                {/* Outlier Score */}
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <Label className="text-white font-medium">
@@ -262,7 +418,7 @@ export default function AdvancedViralSearchPage() {
                   />
                 </div>
 
-                {/* 4. Min Views */}
+                {/* Min Views */}
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <Label className="text-white font-medium">Min Views</Label>
@@ -293,7 +449,6 @@ export default function AdvancedViralSearchPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: index * 0.1 }}
           >
-            {/* ✅ FIXED: Added click handler to open video in new tab */}
             <Card
               className="bg-black border-neutral-800 overflow-hidden hover:border-[#B02E2B] transition-all duration-300 group shadow-lg hover:shadow-[#B02E2B]/10 cursor-pointer"
               onClick={() => handleVideoClick(video.videoUrl)}
@@ -310,7 +465,7 @@ export default function AdvancedViralSearchPage() {
                   {formatDuration(video.durationMins)}
                 </div>
 
-                {/* ✅ FIXED: Better viral score display */}
+                {/* Viral Score */}
                 <div
                   className={`absolute top-2 right-2 px-2 py-1 rounded-md text-xs font-bold shadow-lg flex items-center gap-1 backdrop-blur-md border ${
                     video.outlierScore > 300
@@ -330,7 +485,7 @@ export default function AdvancedViralSearchPage() {
                   {new Date(video.publishedAt).toLocaleDateString()}
                 </div>
 
-                {/* ✅ NEW: Short/Long indicator */}
+                {/* Short/Long indicator */}
                 {video.isShort && (
                   <div className="absolute bottom-2 left-2 bg-[#B02E2B]/90 backdrop-blur-sm px-2 py-1 text-[10px] text-white rounded font-bold">
                     SHORT
