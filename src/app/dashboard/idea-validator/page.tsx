@@ -354,7 +354,7 @@ type UIState =
 // CONSTANTS
 // ========================================
 
-const API_URL = "http://localhost:5000/api";
+const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL! as string;
 
 const AGENT_LABELS: Record<
   keyof AgentStatus,

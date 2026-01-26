@@ -140,8 +140,8 @@ type UIState =
   | { type: "completed"; result: AnalysisResult }
   | { type: "failed"; error: string; retryable: boolean };
 
-const API_URL = "http://localhost:5000/api";
-const SOCKET_URL = "http://localhost:5000";
+const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL! as string;
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_BACKEND_URL! as string;
 const MAX_STORED_JOBS = 10;
 const JOB_EXPIRY_HOURS = 24;
 const POLLING_INTERVALS = [1000, 2000, 3000, 5000];

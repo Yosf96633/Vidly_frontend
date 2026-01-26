@@ -53,7 +53,7 @@ export function GlobalFeedback() {
 
   try {
     // Call your Node.js backend
-    const response = await fetch('http://localhost:5000/api/feedback', { // Change port if needed
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/feedback`, { // Change port if needed
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -1,7 +1,7 @@
 import { JobData } from "../app/dashboard/comment-analyzer/page";
 
 // src/lib/api.ts - Updated version
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL! as string
 
 export class RateLimitError extends Error {
   retryAfter: number;
