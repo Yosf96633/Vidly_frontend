@@ -1070,51 +1070,6 @@ export default function VideoAnalysisPage() {
     if (minutes > 0) return `${minutes}m`;
     return `${seconds}s`;
   };
-
-  const resumeJob = async (job: JobMetadata) => {
-    currentJobIdRef.current = job.jobId;
-    setVideoUrl(job.videoUrl);
-    setPendingJobs([]);
-    try {
-      const status = await fetchJobStatus(job.jobId);
-      if (!status) {
-        jobStorage.removeJob(job.jobId);
-        setUiState({ type: "failed", error: "Job expired", retryable: false });
-        showError("Job expired");
-        return;
-      }
-      if (status.state === "completed" && status.returnvalue) {
-        jobStorage.moveToCompleted(job.jobId, status.returnvalue);
-        setUiState({ type: "completed", result: status.returnvalue });
-        showSuccess("Analysis loaded successfully!");
-      } else if (status.state === "failed") {
-        jobStorage.moveToFailed(job.jobId, status.failedReason || "Failed");
-        setUiState({
-          type: "failed",
-          error: status.failedReason || "Job failed",
-          retryable: true,
-        });
-        showError(status.failedReason || "Job failed");
-      } else {
-        setUiState({
-          type: "processing",
-          progress: status.progress || 0,
-          message: "Resuming...",
-        });
-        connectToJob(job.jobId, job.videoId);
-      }
-    } catch (err: any) {
-      setUiState({ type: "failed", error: err.message, retryable: true });
-      showError(err.message);
-    }
-  };
-
-  const dismissJob = (jobId: string) => {
-    jobStorage.removeJob(jobId);
-    setPendingJobs((prev) => prev.filter((j) => j.jobId !== jobId));
-    showSuccess("Job dismissed");
-  };
-
   const handleReset = () => {
     disconnectSocket();
     stopPolling();
