@@ -92,7 +92,7 @@ const pageVariants = {
     filter: "blur(0px)",
     transition: {
       duration: 0.4,
-      ease: [0.23, 1, 0.32, 1], // Custom easing for smooth motion
+      ease: [0.23, 1, 0.32, 1] as const, 
     },
   },
   exit: {
@@ -101,7 +101,7 @@ const pageVariants = {
     filter: "blur(10px)",
     transition: {
       duration: 0.3,
-      ease: [0.23, 1, 0.32, 1],
+      ease: [0.23, 1, 0.32, 1] as const,
     },
   },
 }
