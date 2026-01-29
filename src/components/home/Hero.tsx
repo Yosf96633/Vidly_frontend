@@ -4,6 +4,7 @@ import gsap from "gsap";
 import HeroGeometric from "../HeroGeometry";
 import { Space_Grotesk, Outfit } from "next/font/google";
 import { HoverBorderGradient } from "../ui/hover-border-gradient";
+import { trackEvent } from "@/lib/analytics";
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -129,6 +130,11 @@ export default function Hero() {
           <a
             href="/dashboard"
             rel="noopener noreferrer"
+            onClick={() => trackEvent({
+              action: 'click',
+              category: 'CTA',
+              label: 'Hero - Start for free'
+            })}
             className={`inline-block ${outfit.className} bg-gradient-to-r from-[#B02E2B] via-[#B02E2B] to-[#B02E2B] text-white px-8 py-3 rounded-full font-bold text-sm shadow-[0_0_15px_rgba(176,46,43,0.5)] hover:shadow-[0_0_25px_rgba(176,46,43,0.7)] transition-all`}
           >
             Start for free
