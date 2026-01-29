@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { searchTopicsAdvanced, RateLimitError } from "@/lib/api";
+import { trackSearch, trackFeature, trackEvent } from "@/lib/analytics";
 
 // Types
 interface VideoResult {
@@ -122,6 +123,14 @@ export default function AdvancedViralSearchPage() {
       return;
     }
 
+    // Track search query
+    trackSearch(query);
+    trackFeature({
+      featureName: 'Viral Search',
+      action: 'search',
+      details: `Query: ${query}, Type: ${contentType}, Sort: ${sortBy}`
+    });
+
     setLoading(true);
     setHasSearched(true);
     setResults([]);
@@ -136,6 +145,14 @@ export default function AdvancedViralSearchPage() {
       });
 
       setResults(data as VideoResult[]);
+
+      // Track successful search completion
+      trackEvent({
+        action: 'search_complete',
+        category: 'Viral Search',
+        label: `Found ${data.length} results`,
+        value: data.length
+      });
 
       // Update rate limit info from response headers
       const remaining = headers.get("x-ratelimit-remaining");
@@ -200,6 +217,13 @@ export default function AdvancedViralSearchPage() {
   };
 
   const handleVideoClick = (videoUrl: string) => {
+    // Track video selection
+    trackEvent({
+      action: 'video_click',
+      category: 'Viral Search',
+      label: videoUrl
+    });
+    
     window.open(videoUrl, "_blank", "noopener,noreferrer");
   };
 

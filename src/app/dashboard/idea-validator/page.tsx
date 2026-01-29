@@ -27,6 +27,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { Space_Grotesk, Outfit } from "next/font/google";
 import { RateLimitError } from "@/lib/api";
+import { trackFeature, trackConversion, trackEvent } from "@/lib/analytics";
 
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] });
 const outfit = Outfit({ subsets: ["latin"] });
@@ -422,6 +423,13 @@ export default function VideoIdeaValidatorPage() {
       return;
     }
 
+    // Track idea submission
+    trackFeature({
+      featureName: 'Idea Validator',
+      action: 'submit_idea',
+      details: `Idea: ${idea.substring(0, 50)}...`
+    });
+
     setUiState({
       type: "processing",
       progress: 0,
@@ -572,6 +580,20 @@ export default function VideoIdeaValidatorPage() {
                 setUiState({
                   type: "completed",
                   result: result,
+                });
+
+                // Track successful validation completion
+                trackConversion({
+                  conversionName: 'idea_validation_completed',
+                  value: 1
+                });
+
+                // Track the score
+                trackEvent({
+                  action: 'validation_complete',
+                  category: 'Idea Validator',
+                  label: `Score: ${result.score}`,
+                  value: result.score
                 });
               } else {
                 setUiState({
