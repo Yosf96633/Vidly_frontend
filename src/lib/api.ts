@@ -2,7 +2,12 @@ import { JobData } from "../app/dashboard/comment-analyzer/_components/videoAnal
 
 // src/lib/api.ts - Updated version
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL! as string
-
+export interface VideoResult {
+  id: string;
+  title: string;
+  views: number;
+  // whatever your API returns
+}
 export class RateLimitError extends Error {
   retryAfter: number;
   resetAt: string;
@@ -125,7 +130,7 @@ export async function searchTopicsAdvanced(
     minViews?: number;
     maxResults?: number;
   }
-) {
+): Promise<{ data: VideoResult[]; headers: Headers }> {
   const params = new URLSearchParams({ query });
   
   if (options?.contentType) params.append('contentType', options.contentType);
@@ -134,7 +139,7 @@ export async function searchTopicsAdvanced(
   if (options?.minViews) params.append('minViews', options.minViews.toString());
   if (options?.maxResults) params.append('maxResults', options.maxResults.toString());
   
-  return apiRequest(`/api/topics/search-advanced?${params.toString()}`, {
+  return apiRequest(`/topics/search-advanced?${params.toString()}`, {
     method: 'GET',
   }, 'viral_search');
 }
