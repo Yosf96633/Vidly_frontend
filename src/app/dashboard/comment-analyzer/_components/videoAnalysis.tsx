@@ -27,6 +27,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MultiStepLoader } from "@/components/ui/multi-step-loader";
 import { useSearchParams } from "next/navigation";
 import { analyzeSentiment } from "@/lib/api";
+import { trackFeature, trackVideo, trackConversion } from "@/lib/analytics";
 
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] });
 const outfit = Outfit({ subsets: ["latin"] });
@@ -852,6 +853,13 @@ export function VideoAnalysisContent() {
     socket.on("completed", (data) => {
       setUiState({ type: "completed", result: data.result });
       jobStorage.moveToCompleted(jobId, data.result);
+      
+      // Track successful completion
+      trackConversion({
+        conversionName: 'video_analysis_completed',
+        value: 1
+      });
+      
       socket.disconnect();
     });
 
@@ -1020,6 +1028,13 @@ export function VideoAnalysisContent() {
       });
       return;
     }
+
+    // Track video analysis submission
+    trackFeature({
+      featureName: 'Comment Analyzer',
+      action: 'submit_video',
+      details: videoUrl
+    });
 
     setUiState({
       type: "processing",
