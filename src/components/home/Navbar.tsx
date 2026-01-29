@@ -7,6 +7,7 @@ import { Menu, X } from "lucide-react"; // Icons for mobile menu
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils"; // Assuming you have a cn utility
 import { Space_Grotesk, Outfit } from "next/font/google";
+import { trackEvent } from "@/lib/analytics";
 
 
 
@@ -95,6 +96,11 @@ export function Navbar() {
 
           <Link
             href="/dashboard"
+            onClick={() => trackEvent({
+              action: 'click',
+              category: 'CTA',
+              label: 'Navbar - Start for Free'
+            })}
             className="bg-gradient-to-r from-[#B02E2B] to-[#d6211e] text-white text-sm font-medium px-5 py-2.5 rounded-full hover:brightness-110 transition-all shadow-[0_0_15px_rgba(214,33,30,0.5)]"
           >
             Start for Free
