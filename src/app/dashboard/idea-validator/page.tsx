@@ -711,24 +711,23 @@ export default function VideoIdeaValidatorPage() {
     <div className="min-h-screen bg-black p-4 sm:p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header with artistic elements */}
-        <div className=" text-center mb-12 relative">
-          <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-8">
-            <div className="w-32 h-32 bg-gradient-to-r from-[#E55A52] via-[#C83E3A] to-[#B02E2B] rounded-full blur-3xl opacity-20"></div>
-          </div>
+       <div className="text-center mb-8 sm:mb-12 relative">
+  <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-6 sm:-translate-y-8">
+    <div className="w-24 h-24 sm:w-32 sm:h-32 bg-gradient-to-r from-[#E55A52] via-[#C83E3A] to-[#B02E2B] rounded-full blur-2xl sm:blur-3xl opacity-20"></div>
+  </div>
 
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="p-2 bg-[#B02E2B]/10  rounded-xl">
-              <Brain className="w-8 h-8 text-[#B02E2B]" />
-            </div>
-            <h1 className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-[#B02E2B] via-[#C83E3A] to-[#B02E2B] bg-clip-text text-transparent">
-              Video Idea Validator
-            </h1>
-          </div>
-          <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-            AI-powered analysis of your YouTube video concepts with deep
-            insights and strategic recommendations
-          </p>
-        </div>
+  <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+    <div className="p-1.5 sm:p-2 bg-[#B02E2B]/10 rounded-lg sm:rounded-xl">
+      <Brain className="w-6 h-6 sm:w-8 sm:h-8 text-[#B02E2B]" />
+    </div>
+    <h1 className="text-2xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-[#B02E2B] via-[#C83E3A] to-[#B02E2B] bg-clip-text text-transparent">
+      Video Idea Validator
+    </h1>
+  </div>
+  <p className="text-gray-400 text-sm sm:text-lg max-w-xs sm:max-w-2xl mx-auto">
+    AI-powered analysis of your YouTube video concepts with deep insights and strategic recommendations
+  </p>
+</div>
 
         {/* Input Section */}
         {uiState.type !== "completed" && (

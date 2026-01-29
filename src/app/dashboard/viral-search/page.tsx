@@ -206,23 +206,23 @@ export default function AdvancedViralSearchPage() {
   return (
     <div className="h-full flex flex-col p-6 max-w-7xl mx-auto space-y-8">
       {/* Header */}
-      <div className="flex justify-center items-center flex-col gap-2">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-[#B02E2B]/10 rounded-lg">
-            <TrendingUp className="w-6 h-6 text-[#B02E2B]" />
-          </div>
-          <h1 className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-[#B02E2B] via-[#C83E3A] to-[#B02E2B] bg-clip-text text-transparent">
-            Advanced Viral Search
-          </h1>
-        </div>
-        <p className="text-neutral-400 text-lg max-w-2xl text-center">
-          Filter by{" "}
-          <span className="text-[#B02E2B] font-bold">
-            'Views Per Subscriber'
-          </span>{" "}
-          to find small channels pulling massive numbers.
-        </p>
-      </div>
+     <div className="flex justify-center items-center flex-col gap-1.5 sm:gap-2">
+  <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
+    <div className="p-1.5 sm:p-2 bg-[#B02E2B]/10 rounded-md sm:rounded-lg">
+      <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-[#B02E2B]" />
+    </div>
+    <h1 className="text-xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-[#B02E2B] via-[#C83E3A] to-[#B02E2B] bg-clip-text text-transparent text-center sm:text-left">
+      Advanced Viral Search
+    </h1>
+  </div>
+  <p className="text-neutral-400 text-xs sm:text-lg max-w-[280px] xs:max-w-xs sm:max-w-2xl text-center px-2 sm:px-0">
+    Filter by{" "}
+    <span className="text-[#B02E2B] font-bold">
+      'Views Per Subscriber'
+    </span>{" "}
+    to find small channels pulling massive numbers.
+  </p>
+</div>
 
       {/* Rate Limit Info Banner */}
       {rateLimitInfo && (

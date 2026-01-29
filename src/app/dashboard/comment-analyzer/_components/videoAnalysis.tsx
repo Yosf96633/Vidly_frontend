@@ -1118,21 +1118,21 @@ export function VideoAnalysisContent() {
       >
         <div className="max-w-7xl mx-auto">
           {/* TOP BAR */}
-          <div className="flex justify-center items-center mb-8 border-b border-neutral-200 dark:border-neutral-800 pb-6">
-            <div className="flex flex-col items-start ">
-              <h1
-                className={`text-4xl sm:text-5xl font-bold bg-gradient-to-r from-[#B02E2B] via-[#C83E3A] to-[#B02E2B] bg-clip-text text-transparent flex items-center gap-3 ${spaceGrotesk.className}`}
-              >
-                <span className="bg-[#B02E2B]/10 p-2 rounded-lg">
-                  <Zap className="w-8 h-8 text-[#B02E2B]" />
-                </span>
-                Audience Mind-Reader
-              </h1>
-              <p className="text-neutral-500 dark:text-neutral-400 mt-2 text-lg max-w-2xl mx-auto">
-                AI-powered comment analysis & sentiment tracking.
-              </p>
-            </div>
-          </div>
+          <div className="flex justify-center items-center mb-4 sm:mb-8 border-b border-neutral-200 dark:border-neutral-800 pb-4 sm:pb-6">
+  <div className="flex flex-col items-center sm:items-start text-center sm:text-left w-full">
+    <h1
+      className={`text-2xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-[#B02E2B] via-[#C83E3A] to-[#B02E2B] bg-clip-text text-transparent flex flex-col sm:flex-row items-center gap-2 sm:gap-3 ${spaceGrotesk.className}`}
+    >
+      <span className="bg-[#B02E2B]/10 p-1.5 sm:p-2 rounded-lg mb-2 sm:mb-0">
+        <Zap className="w-6 h-6 sm:w-8 sm:h-8 text-[#B02E2B]" />
+      </span>
+      Audience Mind-Reader
+    </h1>
+    <p className="text-neutral-500 dark:text-neutral-400 mt-1 sm:mt-2 text-sm sm:text-lg max-w-xs sm:max-w-2xl mx-auto sm:mx-0">
+      AI-powered comment analysis & sentiment tracking.
+    </p>
+  </div>
+</div>
 
           {/* ✅ UPDATE INPUT SECTION - Add disabled state */}
           {uiState.type === "idle" && (
@@ -1171,48 +1171,49 @@ export function VideoAnalysisContent() {
                 </div>
               )}
 
-              <div className="relative group">
-                <div
-                  className={`absolute -inset-1 rounded-xl blur transition duration-200 ${
-                    rateLimit.isExhausted
-                      ? "bg-neutral-600 opacity-20"
-                      : "bg-gradient-to-r from-[#B02E2B] to-[#902421] opacity-25 group-hover:opacity-50"
-                  }`}
-                ></div>
-                <div className="relative flex">
-                  <input
-                    type="text"
-                    value={videoUrl}
-                    onChange={(e) => setVideoUrl(e.target.value)}
-                    disabled={rateLimit.isExhausted || isCheckingLimit}
-                    placeholder={
-                      rateLimit.isExhausted
-                        ? "Daily limit reached - come back tomorrow"
-                        : "Paste YouTube Video URL..."
-                    }
-                    className="w-full pl-6 pr-32 py-5 bg-white dark:bg-[#0f0f0f] border border-neutral-200 dark:border-neutral-800 rounded-xl text-neutral-900 dark:text-white focus:ring-1 focus:ring-[#B02E2B] focus:border-[#B02E2B] outline-none transition-all text-lg shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                  <button
-                    onClick={handleSubmit}
-                    disabled={rateLimit.isExhausted || isCheckingLimit}
-                    className={`absolute right-2 top-2 bottom-2 px-8 font-bold rounded-lg transition-all flex items-center gap-2 ${
-                      rateLimit.isExhausted || isCheckingLimit
-                        ? "bg-neutral-600 text-neutral-400 cursor-not-allowed"
-                        : "bg-[#B02E2B] hover:bg-[#902421] text-white"
-                    }`}
-                  >
-                    {isCheckingLimit ? (
-                      <>Loading...</>
-                    ) : rateLimit.isExhausted ? (
-                      <>Limit Reached</>
-                    ) : (
-                      <>
-                        Analyze <ArrowRight className="w-5 h-5" />
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
+             <div className="relative group">
+  <div
+    className={`absolute -inset-1 rounded-xl blur transition duration-200 ${
+      rateLimit.isExhausted
+        ? "bg-neutral-600 opacity-20"
+        : "bg-gradient-to-r from-[#B02E2B] to-[#902421] opacity-25 group-hover:opacity-50"
+    }`}
+  ></div>
+  <div className="relative flex flex-col sm:flex-row">
+    <input
+      type="text"
+      value={videoUrl}
+      onChange={(e) => setVideoUrl(e.target.value)}
+      disabled={rateLimit.isExhausted || isCheckingLimit}
+      placeholder={
+        rateLimit.isExhausted
+          ? "Daily limit reached - come back tomorrow"
+          : "Paste YouTube Video URL..."
+      }
+      className="w-full px-4 sm:pl-6 sm:pr-32 py-4 sm:py-5 bg-white dark:bg-[#0f0f0f] border border-neutral-200 dark:border-neutral-800 rounded-xl text-neutral-900 dark:text-white focus:ring-1 focus:ring-[#B02E2B] focus:border-[#B02E2B] outline-none transition-all text-base sm:text-lg shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+    />
+    <button
+      onClick={handleSubmit}
+      disabled={rateLimit.isExhausted || isCheckingLimit}
+      className={`mt-3 sm:mt-0 sm:absolute sm:right-2 sm:top-2 sm:bottom-2 px-6 sm:px-8 py-3 sm:py-0 font-bold rounded-lg transition-all flex items-center justify-center gap-2 w-full sm:w-auto ${
+        rateLimit.isExhausted || isCheckingLimit
+          ? "bg-neutral-600 text-neutral-400 cursor-not-allowed"
+          : "bg-[#B02E2B] hover:bg-[#902421] text-white"
+      }`}
+    >
+      {isCheckingLimit ? (
+        <>Loading...</>
+      ) : rateLimit.isExhausted ? (
+        <>Limit Reached</>
+      ) : (
+        <>
+          Analyze
+          <ArrowRight className="w-5 h-5 hidden sm:inline" />
+        </>
+      )}
+    </button>
+  </div>
+</div>
               <p className="mt-4 text-neutral-500 text-sm">
                 {rateLimit.isExhausted
                   ? `Your limit will reset in ${formatResetTime(rateLimit.resetIn)}`
