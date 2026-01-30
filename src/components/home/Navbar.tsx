@@ -88,8 +88,8 @@ export function Navbar() {
           <ThemeToggle />
           
           <Link
-            href="#"
-            className={`border-[#B02E2B]  border-2 text-black dark:text-white rounded-full text-sm font-medium px-5 py-2 hover:bg-[#d6211e]/10 transition-colors`}
+            href="/watchdemo"
+            className={`border-[#B02E2B] ${outfit.className}  border-2 text-black dark:text-white rounded-full text-sm font-medium px-5 py-2 hover:bg-[#d6211e]/10 transition-colors`}
           >
             Watch Demo
           </Link>
@@ -146,7 +146,7 @@ export function Navbar() {
               {/* Mobile Buttons */}
               <div className="flex flex-col gap-4 w-full px-8">
                 <Link
-                  href="#"
+                  href="/watchdemo"
                   onClick={() => setIsOpen(false)}
                   className="w-full text-center border-[#B02E2B] border-2 text-black dark:text-white rounded-full text-sm font-medium px-5 py-3 "
                 >
@@ -154,7 +154,7 @@ export function Navbar() {
                 </Link>
 
                 <Link
-                  href="#"
+                  href="/dashboard"
                   onClick={() => setIsOpen(false)}
                   className="w-full text-center bg-gradient-to-r from-[#B02E2B] to-[#d6211e] text-white text-sm font-medium px-5 py-3 rounded-full"
                 >
