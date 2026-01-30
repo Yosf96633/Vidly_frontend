@@ -25,6 +25,7 @@
   scrollbar-width: thin;
   scrollbar-color: #404040 transparent;
 }
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
