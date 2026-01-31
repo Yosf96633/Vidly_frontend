@@ -160,7 +160,7 @@ export default function Hero() {
               {/* Address Bar Mockup */}
               <div className="flex-1 flex justify-center px-4 md:px-20">
                 <div className="w-full max-w-sm h-6 bg-neutral-100 dark:bg-neutral-800 rounded-md flex items-center justify-center text-[10px] text-neutral-400 font-mono">
-                    vidly.ai/dashboard
+                    getvidly.com/dashboard
                 </div>
               </div>
           </div>
