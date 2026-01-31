@@ -36,24 +36,24 @@ export default function WatchDemoPage() {
       title: "Comment Analyzer",
       description:
         "Watch how AI analyzes thousands of comments to extract viral triggers, retention killers, and audience desires in seconds.",
-      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1",
-      duration: "2:30",
+      videoUrl: "https://www.youtube.com/embed/Bum-Z3CA00o?autoplay=1",
+      duration: "0:45",
     },
     {
       icon: <TrendingUp className="w-7 h-7" />,
       title: "Viral Search",
       description:
         "Discover the exact search strategy that finds videos outperforming their channel size by 200%+.",
-      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1",
-      duration: "3:15",
+      videoUrl: "https://www.youtube.com/embed/FoWvBzCNzvY?autoplay=1",
+      duration: "0:47",
     },
     {
       icon: <Lightbulb className="w-7 h-7" />,
       title: "Idea Validator",
       description:
         "See our AI analyze competition, audience demand, and viral potential to give your ideas a real success score.",
-      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1",
-      duration: "2:45",
+      videoUrl: "https://www.youtube.com/embed/mQVcW3zYlHw?autoplay=1",
+      duration: "2:10",
     },
   ];
 
@@ -134,13 +134,13 @@ export default function WatchDemoPage() {
                 <div
                   className={`absolute ${spaceGrotesk.className} bottom-4 right-4 bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 text-sm font-semibold`}
                 >
-                  ⏱️ 3:45
+                  ⏱️ 1:01
                 </div>
               </div>
             ) : (
               <iframe
                 className="w-full h-full"
-                src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1"
+                src="https://www.youtube.com/embed/xtNcMcWEgnA?autoplay=1"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
               ></iframe>

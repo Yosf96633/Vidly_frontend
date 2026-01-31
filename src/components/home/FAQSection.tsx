@@ -28,11 +28,7 @@ interface FAQItem {
 }
 
 const faqData: FAQItem[] = [
-  {
-    question: "I have 0 subscribers. Will this work for me?",
-    answer:
-      "Yes. In fact, you need it more than big channels. You can't afford to waste 10 uploads guessing. Use our Viral Outlier Hunter to find the specific video format that is mathematically proven to work for small channels in your niche.",
-  },
+ 
   {
     question: "Is this just another wrapper for ChatGPT?",
     answer:
