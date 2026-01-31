@@ -472,9 +472,9 @@ export default function DashboardPage() {
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
-            "Agent Ethan (AI Manager)",
-            "Thumbnail Forensics",
-            "Retention Spy",
+            "Deep Audience Analysis ",
+            "Shorts Analyzer",
+            "Ethan (AI Manager)",
           ].map((item, i) => (
             <div
               key={i}
