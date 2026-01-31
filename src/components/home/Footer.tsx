@@ -23,7 +23,6 @@ const outfit = Outfit({
 
 const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
-
   const socialIcons: LucideIcon[] = [Facebook, Twitter, Instagram, Linkedin];
   const companyLinks: string[] = ["Home", "About Us", "Features", "Solutions", ];
   const resourceLinks: string[] = ["Blog", "Case Studies", "Help Center", "API Docs"];
@@ -108,7 +107,7 @@ const Footer: React.FC = () => {
              
               <li className="flex items-center gap-4">
                 <Phone className="w-6 h-6 text-[#B02E2B] shrink-0" />
-                <span className="text-gray-600 dark:text-zinc-400">+1 (555) 123-4567</span>
+                <span className="text-gray-600 dark:text-zinc-400">+92 (311) 6369826</span>
               </li>
               <li className="flex items-center gap-4">
                 <Mail className="w-6 h-6 text-[#B02E2B] shrink-0" />
