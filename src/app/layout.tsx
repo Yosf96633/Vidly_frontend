@@ -62,7 +62,7 @@ export const metadata: Metadata = {
     description: 'Your audience is telling you exactly what they want to watch next. Use AI to extract questions, demands, and hidden viral opportunities from the noise.',
     images: [
       {
-        url: '/assets/dashboard.png',
+        url: '/assets/vidly.png',
         width: 1200,
         height: 630,
         alt: 'Vidly Dashboard - YouTube Analytics and Intelligence',
@@ -75,7 +75,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Vidly - AI-Powered YouTube Intelligence',
     description: 'Discover viral topics, analyze comments, and grow your YouTube channel 10x faster with creator-grade intelligence.',
-    images: ['/assets/dashboard.png'],
+    images: ['/assets/vidly.png'],
     creator: '@Vidly', // Replace with your actual Twitter handle if you have one
   },
 
