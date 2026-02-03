@@ -118,10 +118,6 @@ export function WelcomeHero() {
 
     fetchUsageSummary();
 
-    // Optionally refresh usage data every 30 seconds
-    const interval = setInterval(fetchUsageSummary, 30000);
-    
-    return () => clearInterval(interval);
   }, []);
 
   const getGreeting = () => {
