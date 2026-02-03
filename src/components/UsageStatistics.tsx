@@ -139,15 +139,10 @@ export function UsageStatistics() {
     const interval = setInterval(() => {
       setCurrentTime(Date.now());
     }, 1000);
-
-    // Refresh usage data every 30 seconds
-    const refreshInterval = setInterval(() => {
-      loadUsageData();
-    }, 30000);
+  
 
     return () => {
       clearInterval(interval);
-      clearInterval(refreshInterval);
     };
   }, []);
 
